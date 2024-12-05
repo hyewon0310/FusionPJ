@@ -7,7 +7,7 @@ public class IO_Example {
         Scanner sc = new Scanner(System.in);
 
         System.out.print("Name: ");
-        String name = sc.next();    // 한 글자 읽어들이는 메소드
+        String name = sc.next();    // 한 글자 입력 받는 메소드
 
         System.out.print("Age: ");
         int age = sc.nextInt();
