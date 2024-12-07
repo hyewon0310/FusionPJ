@@ -87,14 +87,25 @@ public class ClientHandler {
     }
 
     // 선발 일정 및 비용 확인 조회 요청 및 확인
-    //public static String[] scheduleList_viewReq() throws Exception {
+    // public static String[] scheduleList_viewReq() throws Exception {
 //    public String[] scheduleList_viewReq() throws Exception {
-//        Protocol requestProtocol = new Protocol(Protocol.TYPE6_VIEW_REQ, Protocol.T6_CODE0_SELECTION_SCHEDULE_LIST);
-//        send(requestProtocol);
-//        Protocol responseProtocol = receive(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE0_SELECTION_SCHEDULE_LIST);
-//        return responseProtocol.getBody();
-//    }
+//        Protocol requestNameList = new Protocol(Protocol.TYPE6_VIEW_REQ, Protocol.T6_CODE0_SELECTION_SCHEDULENAME_LIST);
+//        send(requestNameList);
+//        Protocol responseNameList = receive(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE0_SELECTION_SCHEDULENAME_LIST);
+//        String[] nameList= (responseNameList.getBody());
 //
+//        Protocol requestPeriodList = new Protocol(Protocol.TYPE6_VIEW_REQ, Protocol.T6_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST);
+//        send(requestPeriodList);
+//        Protocol responsePeriodList = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST);
+//        String[] periodList = responsePeriodList.getBody();
+//        String[] result = new String[nameList.length];
+//        for (int i = 0; i < nameList.length; i++)
+//        {
+//            result[i] = "입사 일정명 : " + nameList[i] + ", 입사 일정 기간 : " + periodList[i];
+//        }
+//        return result;
+//    }
+
 //    // public static String[] dormitoryFeeList_viewReq() throws Exception {
 //    public String[] dormitoryFeeList_viewReq() throws Exception {
 //        Protocol requestProtocol = new Protocol(Protocol.TYPE6_VIEW_REQ, Protocol.T6_CODE1_DORMITORY_FEE_LIST);
