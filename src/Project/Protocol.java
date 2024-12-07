@@ -119,19 +119,25 @@ public class Protocol {
     private int bodyLength;
     private byte[] body;
 
+    // ㅁ ㅁ ㅁ ㅁ => int
+    private int bodyIndex = 0;
 
+    public Protocol(){
+        new Protocol(UNDEFINED_TYPE, 0);
+    }
     // Constructor: Type과 Code만 설정 (Body는 나중에 추가)
     public Protocol(int type, int code) {
         this.type = (byte) type;
         this.code = (byte) code;
         this.bodyLength = 0;
-        this.body = new byte[0];
     }
 
     // body 설정
-    public void setBody(byte[] data) {
-        this.body = data;
-        this.bodyLength = data.length;
+    public void setBody(int data) {
+        this.body = new byte[LEN_BODYLENGTH];
+        byte[] input = intToByte(data);
+        this.body = input;
+        this.bodyLength = input.length;
     }
 
     // 전체 packet 생성
@@ -140,7 +146,7 @@ public class Protocol {
         packet[0] = type;
         packet[LEN_TYPE] = code;
         // 헤더만 packet에 담는 코드
-        System.arraycopy(intToByte(getBodyLength()), 0, packet, LEN_TYPE + LEN_CODE, LEN_BODYLENGTH);
+        System.arraycopy(intToByte(getBodyLength()), 0, packet, LEN_TYPE + LEN_CODE, LEN_HEADER);
 
         // body에 데이터가 있다면 추가
         if (getBodyLength() > 0) {
@@ -160,8 +166,12 @@ public class Protocol {
         byte[] body = Arrays.copyOfRange(packet, LEN_HEADER, LEN_HEADER + bodyLength);
 
         Protocol protocol = new Protocol(type, code);
-        protocol.setBody(body);
+        protocol.setBody(byteToInt(body));
         return protocol;
+    }
+
+    public Object getBody() {
+        return dataExtraction(body);
     }
 
     private byte[] intToByte(int i) {
@@ -194,7 +204,6 @@ public class Protocol {
         System.arraycopy(packet, LEN_TYPE + LEN_CODE, data, 0, LEN_BODYLENGTH);
         bodyLength = byteToInt(data);
     }
-
 
 
     // 매개 변수 packet을 통해 body를 생성
