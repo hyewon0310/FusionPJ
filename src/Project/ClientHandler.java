@@ -72,7 +72,6 @@ public class ClientHandler {
 //        }
 //    }
 //
-//
 //    // 선발 일정 및 비용 확인 조회 요청 및 확인
 //    public static String[] scheduleList_req() {
 //        Protocol protocol = new Protocol(Protocol.TYPE6_VIEW_REQ, Protocol.T6_CODE0_SELECTION_SCHEDULE_LIST);
