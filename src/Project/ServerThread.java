@@ -185,7 +185,6 @@ public class ServerThread extends Thread {
 
         return response;
     }
-
     private List<String> fetchMockSchedules() {
         // 테스트용 일정 데이터
         return Arrays.asList(
@@ -211,6 +210,4 @@ public class ServerThread extends Thread {
         protocol.setPacketBody(buf);
         return protocol;
     }
-
-
 }
