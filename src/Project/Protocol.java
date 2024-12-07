@@ -115,99 +115,375 @@ public class Protocol {
 
     public static final int LEN_TYPE = 1;
     public static final int LEN_CODE = 1;
-    public static final int LEN_BODYLENGTH = 4;
+    public static final int LEN_BODYLENGTH = 5;
     public static final int LEN_HEADER = LEN_TYPE + LEN_CODE + LEN_BODYLENGTH;
+
+//    private byte type;
+//    private byte code;
+//    private int bodyLength;
+//    private byte[] body;
+//
+//    // ㅁ ㅁ ㅁ ㅁ => int
+//    private int bodyIndex = 0;
+//
+//    public Protocol(){
+//        new Protocol(UNDEFINED_TYPE, 0);
+//    }
+//    // Constructor: Type과 Code만 설정 (Body는 나중에 추가)
+//    public Protocol(int type, int code) {
+//        this.type = (byte) type;
+//        this.code = (byte) code;
+//        this.bodyLength = 0;
+//    }
+//
+//    // body 설정
+//    public void setBody(int data) {
+//        this.body = new byte[LEN_BODYLENGTH];
+//        byte[] input = intToByte(data);
+//        this.body = input;
+//        this.bodyLength = input.length;
+//    }
+//
+////    public void setBody(String[] data, int fixByteLength) {
+////        this.body = new byte[LEN_BODYLENGTH];
+////        byte[] input;
+////        int inputLength = 0;
+////        for(int i = 0 ; i < data.length ; i++){
+////            input = data[i].getBytes();
+////            System.arraycopy(input, 0, this.body, inputLength, fixByteLength);
+////            inputLength += fixByteLength;
+////        }
+////        this.bodyLength = inputLength;
+////    }
+//
+//
+//    public void setBody(String[] data, int fixByteLength) {
+//        int totalLength = data.length * fixByteLength;
+//        if (totalLength > LEN_BODYLENGTH) {
+//            throw new IllegalArgumentException("데이터가 최대 길이를 초과합니다.");
+//        }
+//        this.body = new byte[totalLength];
+//        int offset = 0;
+//        for (String str : data) {
+//            byte[] input = str.getBytes();
+//            System.arraycopy(input, 0, this.body, offset, Math.min(input.length, fixByteLength));
+//            offset += fixByteLength;
+//        }
+//        this.bodyLength = offset;
+//    }
+//
+//
+//    public void setBody(String data) {
+//        this.body = new byte[LEN_BODYLENGTH];
+//        byte[] input = data.getBytes();
+//        this.body = input;
+//        this.bodyLength = input.length;
+//    }
+//
+//    // 전체 packet 생성
+//    public byte[] createPacket() {
+//        byte[] packet = new byte[LEN_HEADER + bodyLength];
+//        packet[0] = type;
+//        packet[LEN_TYPE] = code;
+//        // 헤더만 packet에 담는 코드
+//        System.arraycopy(intToByte(getBodyLength()), 0, packet, LEN_TYPE + LEN_CODE, LEN_HEADER);
+//
+//        // body에 데이터가 있다면 추가
+//        if (getBodyLength() > 0) {
+//            System.arraycopy(body, 0, packet, LEN_HEADER, getBodyLength());
+//        }
+//        return packet;
+//    }
+//
+//        // 패킷에서 헤더와 바디의 복원
+//    public Protocol dataExtraction(byte[] packet) {
+//        // 헤더 복원
+//        byte type = packet[0];
+//        byte code = packet[LEN_TYPE];
+//        int bodyLength = byteToInt(Arrays.copyOfRange(packet, LEN_TYPE + LEN_CODE, LEN_HEADER));
+//
+//        // 바디 복원
+//        byte[] body = Arrays.copyOfRange(packet, LEN_HEADER, LEN_HEADER + bodyLength);
+//
+//        Protocol protocol = new Protocol(type, code);
+//        protocol.setBody(byteToInt(body));
+//        return protocol;
+//    }
+//
+//    public byte[] getBody() {
+//        return this.body;
+//    }
+//
+//    public String[] byteToStringArray(byte[] packet , int fixByteLength) {
+//        int resultLength = packet.length / fixByteLength;
+//        String[] result = new String[resultLength];
+//        int j = 0;
+//        for (int i = 0; i < packet.length; i += fixByteLength) {
+//            int end = Math.min(i + fixByteLength, packet.length);
+//            result[j] = new String(packet, i, end - i).trim();
+//            j++;
+//        }
+//        return result;
+//    }
+//
+//    private byte[] intToByte(int i) {
+//        return ByteBuffer.allocate(LEN_BODYLENGTH).putInt(i).array();
+//    }
+//
+//    private int byteToInt(byte[] b) {
+//        return ByteBuffer.wrap(b).getInt();
+//    }
+//
+//    public int getBodyLength() {
+//        return bodyLength;
+//    }
+//
+//    public byte getType() {
+//        return type;
+//    }
+//
+//    public byte getCode() {
+//        return code;
+//    }
+//
+//    public void setPacketHeader(byte[] packet) {
+//        byte[] data;
+//
+//        type = packet[0];
+//        code = packet[LEN_TYPE];
+//
+//        data = new byte[LEN_BODYLENGTH];
+//        System.arraycopy(packet, LEN_TYPE + LEN_CODE, data, 0, LEN_BODYLENGTH);
+//        bodyLength = byteToInt(data);
+//    }
+//
+//
+//    // 매개 변수 packet을 통해 body를 생성
+//    public void setPacketBody(byte[] packet) {
+//        byte[] data;
+//
+//        if (packet.length > LEN_HEADER){
+//            data = new byte[packet.length - LEN_HEADER];
+//            System.arraycopy(packet, LEN_HEADER, data, 0, data.length);
+//        }
+//    }
+//}
 
     private byte type;
     private byte code;
     private int bodyLength;
     private byte[] body;
 
-    // ㅁ ㅁ ㅁ ㅁ => int
-    private int bodyIndex = 0;
-
-    public Protocol(){
-        new Protocol(UNDEFINED_TYPE, 0);
+    public Protocol() {
+        this(UNDEFINED_TYPE, 0);
     }
-    // Constructor: Type과 Code만 설정 (Body는 나중에 추가)
+
     public Protocol(int type, int code) {
         this.type = (byte) type;
         this.code = (byte) code;
         this.bodyLength = 0;
+        this.body = null;
+        System.out.println("[DEBUG] Protocol initialized: type=" + type + ", code=" + code);
     }
 
-    // body 설정
     public void setBody(int data) {
-        this.body = new byte[LEN_BODYLENGTH];
-        byte[] input = intToByte(data);
-        this.body = input;
-        this.bodyLength = input.length;
+        System.out.println("[DEBUG] setBody(int) called with data=" + data);
+        try {
+            byte[] input = intToByte(data);
+            this.body = new byte[input.length];
+            System.arraycopy(input, 0, this.body, 0, input.length);
+            this.bodyLength = input.length;
+            System.out.println("[DEBUG] Body set with length=" + bodyLength);
+        } catch (Exception e) {
+            System.err.println("[ERROR] setBody(int) failed: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
+
+//    public void setBody(String[] data, int fixByteLength) {
+//        System.out.println("[DEBUG] setBody(String[]) called with data.length=" + data.length);
+//        try {
+//            int totalLength = data.length * fixByteLength;
+//            if (totalLength > LEN_BODYLENGTH) {
+//                throw new IllegalArgumentException("Data exceeds maximum allowed length.");
+//            }
+//
+//            this.body = new byte[totalLength];
+//            int offset = 0;
+//            for (String str : data) {
+//                byte[] input = str.getBytes();
+//                System.arraycopy(input, 0, this.body, offset, Math.min(input.length, fixByteLength));
+//                offset += fixByteLength;
+//            }
+//            this.bodyLength = offset;
+//            System.out.println("[DEBUG] Body set with total length=" + bodyLength);
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] setBody(String[]) failed: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
+
+//    public void setBody(String[] data, int fixByteLength) {
+//        System.out.println("[DEBUG] setBody(String[]) called with data.length=" + data.length);
+//        this.body = new byte[data.length * fixByteLength]; //String배열의 원소의 개수에 고정길이를 곱한 값
+//        byte[] input;
+//        int inputLength = 0;
+//        for(int i = 0 ; i < data.length ; i++){
+//            input = data[i].getBytes(); //데이터를 바이트형태로 바꿈
+//            System.arraycopy(input, 0, this.body, inputLength, fixByteLength);
+//            for (int j = 0; j < fixByteLength * i; j++)
+//            {
+//                System.out.println("body 값 확인 : " + this.body[j]);
+//            }
+//            inputLength += fixByteLength;
+//        }
+//        System.out.println(this.bodyLength);
+//        this.bodyLength = inputLength;
+//
+//        System.out.println("[DEBUG] Body set with total length=" + bodyLength);
+//    }
 
     public void setBody(String[] data, int fixByteLength) {
-        this.body = new byte[LEN_BODYLENGTH];
+        System.out.println("Setting body with String array...");
+        this.body = new byte[data.length * fixByteLength]; // String 배열의 원소의 개수에 고정 길이를 곱한 값
         byte[] input;
         int inputLength = 0;
-        for(int i = 0 ; i < data.length ; i++){
-            input = data[i].getBytes();
-            System.arraycopy(input, 0, this.body, inputLength, fixByteLength);
-            inputLength += fixByteLength;
+        for (int i = 0; i < data.length; i++) {
+            input = data[i].getBytes(); // 데이터를 바이트 형태로 바꿈
+            int copyLength = Math.min(input.length, fixByteLength); // 복사 길이 제한
+            System.arraycopy(input, 0, this.body, inputLength, copyLength);
+            inputLength += fixByteLength; // 고정 길이만큼 이동
         }
         this.bodyLength = inputLength;
+        System.out.println("Body set successfully. Total bodyLength=" + this.bodyLength);
     }
+
 
     public void setBody(String data) {
-        this.body = new byte[LEN_BODYLENGTH];
-        byte[] input = data.getBytes();
-        this.body = input;
-        this.bodyLength = input.length;
-    }
-
-    // 전체 packet 생성
-    public byte[] createPacket() {
-        byte[] packet = new byte[LEN_HEADER + bodyLength];
-        packet[0] = type;
-        packet[LEN_TYPE] = code;
-        // 헤더만 packet에 담는 코드
-        System.arraycopy(intToByte(getBodyLength()), 0, packet, LEN_TYPE + LEN_CODE, LEN_HEADER);
-
-        // body에 데이터가 있다면 추가
-        if (getBodyLength() > 0) {
-            System.arraycopy(body, 0, packet, LEN_HEADER, getBodyLength());
+        System.out.println("[DEBUG] setBody(String) called with data=" + data);
+        try {
+            byte[] input = data.getBytes();
+            this.body = new byte[input.length];
+            System.arraycopy(input, 0, this.body, 0, input.length);
+            this.bodyLength = input.length;
+            System.out.println("[DEBUG] Body set with length=" + bodyLength);
+        } catch (Exception e) {
+            System.err.println("[ERROR] setBody(String) failed: " + e.getMessage());
+            e.printStackTrace();
         }
-        return packet;
     }
 
-        // 패킷에서 헤더와 바디의 복원
+    public byte[] createPacket() {
+        System.out.println("[DEBUG] createPacket() called with bodyLength=" + bodyLength);
+        try {
+            byte[] packet = new byte[LEN_HEADER + bodyLength];
+            packet[0] = type;
+            packet[LEN_TYPE] = code;
+            System.arraycopy(intToByte(bodyLength), 0, packet, LEN_TYPE + LEN_CODE, Integer.BYTES);
+
+            if (bodyLength > 0) {
+                System.arraycopy(body, 0, packet, LEN_HEADER, bodyLength);
+            }
+            System.out.println("[DEBUG] Packet created with total length=" + packet.length);
+            return packet;
+        } catch (Exception e) {
+            System.err.println("[ERROR] createPacket() failed: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public Protocol dataExtraction(byte[] packet) {
-        // 헤더 복원
-        byte type = packet[0];
-        byte code = packet[LEN_TYPE];
-        int bodyLength = byteToInt(Arrays.copyOfRange(packet, LEN_TYPE + LEN_CODE, LEN_HEADER));
+        System.out.println("[DEBUG] dataExtraction() called with packet length=" + packet.length);
+        try {
+            byte type = packet[0];
+            byte code = packet[LEN_TYPE];
+            int bodyLength = byteToInt(Arrays.copyOfRange(packet, LEN_TYPE + LEN_CODE, LEN_HEADER));
 
-        // 바디 복원
-        byte[] body = Arrays.copyOfRange(packet, LEN_HEADER, LEN_HEADER + bodyLength);
+            if (bodyLength < 0 || bodyLength > LEN_BODYLENGTH) {
+                throw new IllegalArgumentException("Invalid body length in packet.");
+            }
 
-        Protocol protocol = new Protocol(type, code);
-        protocol.setBody(byteToInt(body));
-        return protocol;
+            byte[] nbody = Arrays.copyOfRange(packet, LEN_HEADER, LEN_HEADER + bodyLength);
+            Protocol protocol = new Protocol(type, code);
+            protocol.body = nbody;
+            System.out.println("[DEBUG] Protocol extracted with type=" + type + ", code=" + code + ", bodyLength=" + bodyLength);
+            return protocol;
+        } catch (Exception e) {
+            System.err.println("[ERROR] dataExtraction() failed: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public byte[] getBody() {
         return this.body;
     }
 
-    public String[] byteToStringArray(byte[] packet , int fixByteLength) {
-        int resultLength = packet.length / fixByteLength;
+//    public String[] byteToStringArray(byte[] packet, int fixByteLength) {
+//        System.out.println("[DEBUG] byteToStringArray() called with packet length=" + packet.length);
+//        try {
+//            int resultLength = packet.length / fixByteLength;
+//            String[] result = new String[resultLength];
+//            for (int i = 0; i < resultLength; i++) {
+//                int start = i * fixByteLength;
+//                int end = Math.min(start + fixByteLength, packet.length);
+//                result[i] = new String(packet, start, end - start).trim();
+//            }
+//            System.out.println("[DEBUG] Converted packet to string array with length=" + result.length);
+//            return result;
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] byteToStringArray() failed: " + e.getMessage());
+//            e.printStackTrace();
+//            return null;
+//        }
+//    }
+
+//    public String[] byteToStringArray(byte[] packet, int fixByteLength) {
+//        System.out.println("Converting byte array to String array...");
+//        int resultLength = (packet.length + fixByteLength - 1) / fixByteLength; // 올림 처리
+//        String[] result = new String[resultLength];
+//        int j = 0;
+//        for (int i = 0; i < packet.length; i += fixByteLength) {
+//            int end = Math.min(i + fixByteLength, packet.length);
+//            result[j] = new String(packet, i, end - i).trim(); // 트림으로 불필요 공백 제거
+//            j++;
+//        }
+//        System.out.println("Conversion complete. Array length: " + result.length);
+//        return result;
+//    }
+
+    public String[] byteToStringArray(byte[] packet, int fixByteLength) {
+        System.out.println("Converting byte array to String array...");
+
+        // 입력 검증
+        if (packet == null || packet.length == 0) {
+            System.out.println("[ERROR] Packet is null or empty.");
+            return new String[0]; // 빈 배열 반환
+        }
+        if (fixByteLength <= 0) {
+            throw new IllegalArgumentException("[ERROR] fixByteLength must be greater than 0.");
+        }
+
+        System.out.println("[DEBUG] Packet length: " + packet.length);
+        System.out.println("[DEBUG] Packet data: " + Arrays.toString(packet));
+
+        // 결과 배열 생성
+        int resultLength = (packet.length + fixByteLength - 1) / fixByteLength; // 올림 처리
         String[] result = new String[resultLength];
+
         int j = 0;
         for (int i = 0; i < packet.length; i += fixByteLength) {
             int end = Math.min(i + fixByteLength, packet.length);
-            result[j] = new String(packet, i, end - i).trim();
+            result[j] = new String(packet, i, end - i).trim(); // 트림으로 불필요 공백 제거
             j++;
         }
+
+        System.out.println("[DEBUG] Conversion complete. Array length: " + result.length);
         return result;
     }
+
+
 
     private byte[] intToByte(int i) {
         return ByteBuffer.allocate(LEN_BODYLENGTH).putInt(i).array();
@@ -229,25 +505,105 @@ public class Protocol {
         return code;
     }
 
+//    public void setPacketHeader(byte[] packet) {
+//        System.out.println("[DEBUG] setPacketHeader() called with packet length=" + packet.length);
+//        try {
+//            if (packet.length < LEN_HEADER) {
+//                throw new IllegalArgumentException("Header 길이가 충분하지 않습니다.");
+//            }
+//            type = packet[0];
+//            code = packet[LEN_TYPE];
+//
+//            byte[] data = new byte[Integer.BYTES];
+//            System.arraycopy(packet, LEN_TYPE + LEN_CODE, data, 0, Integer.BYTES);
+//            bodyLength = byteToInt(data);
+//
+//            if (bodyLength < 0 || bodyLength > LEN_BODYLENGTH) {
+//                throw new IllegalArgumentException("비정상적인 bodyLength 값: " + bodyLength);
+//            }
+//            System.out.println("[DEBUG] Header set: type=" + type + ", code=" + code + ", bodyLength=" + bodyLength);
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] setPacketHeader() failed: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
+
     public void setPacketHeader(byte[] packet) {
-        byte[] data;
+        System.out.println("[DEBUG] setPacketHeader() 호출");
+        try {
+            if (packet.length < Protocol.LEN_HEADER) {
+                throw new IllegalArgumentException("패킷 길이가 헤더 길이보다 작습니다.");
+            }
 
-        type = packet[0];
-        code = packet[LEN_TYPE];
+            type = packet[0];
+            code = packet[1];
+            byte[] bodyLengthBytes = Arrays.copyOfRange(packet, 2, 6); // 4바이트 길이 추출
+            bodyLength = ByteBuffer.wrap(bodyLengthBytes).getInt();
 
-        data = new byte[LEN_BODYLENGTH];
-        System.arraycopy(packet, LEN_TYPE + LEN_CODE, data, 0, LEN_BODYLENGTH);
-        bodyLength = byteToInt(data);
-    }
+            if (bodyLength < 0 || bodyLength > Protocol.LEN_BODYLENGTH) {
+                throw new IllegalArgumentException("비정상적인 bodyLength 값: " + bodyLength);
+            }
 
-
-    // 매개 변수 packet을 통해 body를 생성
-    public void setPacketBody(byte[] packet) {
-        byte[] data;
-
-        if (packet.length > LEN_HEADER){
-            data = new byte[packet.length - LEN_HEADER];
-            System.arraycopy(packet, LEN_HEADER, data, 0, data.length);
+            System.out.println("[DEBUG] 헤더 설정 완료: type=" + type + ", code=" + code + ", bodyLength=" + bodyLength);
+        } catch (Exception e) {
+            System.err.println("[ERROR] setPacketHeader() 실패: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
+//    public void setPacketBody(byte[] packet) {
+//        System.out.println("[DEBUG] setPacketBody() called with packet length=" + packet.length);
+//        try {
+//            if (packet.length < LEN_HEADER) {
+//                throw new IllegalArgumentException("Packet 길이가 헤더보다 작습니다.");
+//            }
+//
+//            int bodySize = packet.length - LEN_HEADER;
+//            byte[] data = new byte[bodySize];
+//            System.arraycopy(packet, LEN_HEADER, data, 0, bodySize);
+//
+//            this.body = data;
+//            System.out.println("[DEBUG] Body set with size=" + body.length);
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] setPacketBody() failed: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
+
+//    public void setPacketBody(byte[] packet) {
+//        System.out.println("Setting packet body...");
+//        if (packet.length > LEN_HEADER) {
+//            byte[] data = new byte[packet.length - LEN_HEADER];
+//            System.arraycopy(packet, LEN_HEADER, data, 0, data.length);
+//            this.body = data;
+//            this.bodyLength = data.length;
+//            System.out.println("Body set. bodyLength=" + this.bodyLength);
+//        } else {
+//            this.body = new byte[0]; // 빈 배열로 초기화
+//            this.bodyLength = 0;
+//            System.out.println("Packet is too short to set body. Initialized as empty.");
+//        }
+//    }
+
+    public void setPacketBody(byte[] body) {
+        System.out.println("Setting packet body...");
+
+        // 입력 데이터 검증
+        if (body == null || body.length == 0) {
+            System.out.println("[ERROR] Body is null or empty.");
+            this.body = new byte[0];
+            this.bodyLength = 0;
+            return;
+        }
+
+        // 바디 설정
+        this.body = body;
+        this.bodyLength = body.length;
+
+        // 디버깅 메시지 출력
+        System.out.println("[DEBUG] Body set successfully. bodyLength=" + this.bodyLength);
+        System.out.println("[DEBUG] Body data: " + Arrays.toString(this.body));
+    }
+
+
 }

@@ -16,10 +16,10 @@ public class Server {
     private InputStream is;
     private OutputStream os;
 
-//    public static void main(String[] args) throws Exception {
-//        Server server = new Server();
-//        server.run();
-//    }
+    public static void main(String[] args) throws Exception {
+        Server server = new Server();
+        server.run();
+    }
 
     // 서버 생성자
     public Server() throws IOException {
@@ -35,17 +35,16 @@ public class Server {
             // 클라이언트 접속 대기 및 통신 담당 소켓 담당
             Socket commSocekt = serverSocket.accept();  // 통신 소켓
             //DB 연결 추가하기
-            Connection conn = null;
 
 //            addThread(commSocekt, conn);
-            addThread(commSocekt, conn);
+            addThread(commSocekt);
         }
     }
 
       // 쓰레드 동기화
-    public synchronized void addThread(Socket socket, Connection conn) throws Exception {
+    public synchronized void addThread(Socket socket) throws Exception {
         if (clientCount < clients.length) {
-            clients[clientCount] = new ServerThread(socket, conn);
+            clients[clientCount] = new ServerThread(socket);
             clients[clientCount].start();
             clientCount++;
         } else {
