@@ -140,6 +140,25 @@ public class Protocol {
         this.bodyLength = input.length;
     }
 
+    public void setBody(String[] data) {
+        this.body = new byte[LEN_BODYLENGTH];
+        byte[] input;
+        int inputLength = 0;
+        for(int i = 0 ; i < data.length ; i++){
+            input = data[i].getBytes();
+            System.arraycopy(input, 0, this.body, inputLength, input.length);
+            inputLength += input.length;
+        }
+        this.bodyLength = inputLength;
+    }
+
+    public void setBody(String data) {
+        this.body = new byte[LEN_BODYLENGTH];
+        byte[] input = data.getBytes();
+        this.body = input;
+        this.bodyLength = input.length;
+    }
+
     // 전체 packet 생성
     public byte[] createPacket() {
         byte[] packet = new byte[LEN_HEADER + bodyLength];
