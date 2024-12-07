@@ -189,8 +189,8 @@ public class Protocol {
         return protocol;
     }
 
-    public Object getBody() {
-        return dataExtraction(body);
+    public byte[] getBody() {
+        return this.body;
     }
 
     private byte[] intToByte(int i) {
