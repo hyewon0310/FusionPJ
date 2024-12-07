@@ -16,10 +16,10 @@ public class Server {
     private InputStream is;
     private OutputStream os;
 
-//    public static void main(String[] args) throws Exception {
-//        Server server = new Server();
-//        server.run();
-//    }
+    public static void main(String[] args) throws Exception {
+        Server server = new Server();
+        server.run();
+    }
 
     // 서버 생성자
     public Server() throws IOException {
@@ -28,47 +28,49 @@ public class Server {
         clientCount = 0;
     }
 
+
     // 구동
-//    public void run() throws IOException {
-//        while (serverSocket != null) {
-//            // 클라이언트 접속 대기 및 통신 담당 소켓 담당
-//            Socket commSocekt = serverSocket.accept();  // 통신 소켓
-//            //DB 연결 추가하기
-//
+    public void run() throws IOException {
+        while (serverSocket != null) {
+            // 클라이언트 접속 대기 및 통신 담당 소켓 담당
+            Socket commSocekt = serverSocket.accept();  // 통신 소켓
+            //DB 연결 추가하기
+
 //            addThread(commSocekt, conn);
-//        }
-//    }
+            //addThread(commSocekt);
+        }
+    }
 
-    //  쓰레드 동기화
-//    public synchronized void addThread(Socket socket, Connection conn) throws Exception {
-//        if (clientCount < clients.length) {
-//            clients[clientCount] = new ServerThread(socket, conn);
-//            clients[clientCount].start();
-//            clientCount++;
-//        } else {
-//            System.out.println("Client refused: maximum " + clients.length + " reached.");
-//        }
-//    }
+      // 쓰레드 동기화
+    public synchronized void addThread(Socket socket, Connection conn) throws Exception {
+        if (clientCount < clients.length) {
+            //clients[clientCount] = new ServerThread(socket);
+            clients[clientCount].start();
+            clientCount++;
+        } else {
+            System.out.println("Client refused: maximum " + clients.length + " reached.");
+        }
+    }
 
-//    public synchronized static void remove(int targetPortID) throws IOException {
-//        int pos = findClient(targetPortID);
-//        if (pos >= 0) {
-//            ServerThread toTerminate = clients[pos];    // 변수 네이밍은 나중에 생각
-//            if (pos < clientCount - 1)
-//                for (int i = pos + 1; i < clientCount; i++)
-//                    clients[i - 1] = clients[i];
-//            clientCount--;
-//            // System.out.print("Current Using Client Number : ");
-//            // System.out.print(clientCount);
-//            toTerminate.close();
-//            toTerminate.stop();
-//        }
-//    }
-//
-//    public static int findClient(int targetPortID) {
-//        for (int i = 0; i < clientCount; i++)
-//            if (clients[i].getPortID() == targetPortID)
-//                return i;
-//        return -1;
-//    }
+    public synchronized static void remove(int targetPortID) throws IOException {
+        int pos = findClient(targetPortID);
+        if (pos >= 0) {
+            ServerThread toTerminate = clients[pos];    // 변수 네이밍은 나중에 생각
+            if (pos < clientCount - 1)
+                for (int i = pos + 1; i < clientCount; i++)
+                    clients[i - 1] = clients[i];
+            clientCount--;
+            // System.out.print("Current Using Client Number : ");
+            // System.out.print(clientCount);
+            toTerminate.close();
+            toTerminate.stop();
+        }
+    }
+
+    public static int findClient(int targetPortID) {
+        for (int i = 0; i < clientCount; i++)
+            if (clients[i].getPortID() == targetPortID)
+                return i;
+        return -1;
+    }
 }
