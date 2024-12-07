@@ -26,9 +26,21 @@ public class ServerThread extends Thread {
     public ServerThread(Socket paramSocket, Connection paramConnection) throws IOException
     {
       portID = paramSocket.getPort();
-      connection = paramConnection;
+     // connection = paramConnection;
       is = paramSocket.getInputStream();
       os = paramSocket.getOutputStream();
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            try {
+                protocol = read();
+                handle(protocol);
+            } catch (Exception e) {
+                //this.stop();
+            }
+        }
     }
 
       public void handle(Protocol protocol) throws Exception {
@@ -36,19 +48,19 @@ public class ServerThread extends Thread {
 
         switch (packetType) {
           case Protocol.TYPE0_LOGIN: //로그인
-            String[] s = (String[]) protocol.getBody();
-            String SQL = "SELECT user_section FROM USERS WHERE user_id = ?";
-            PreparedStatement pstmt = null;
-            ResultSet rs = null;
-
-            pstmt = connection.prepareStatement(SQL);
-            pstmt.setString(1, s[0]);
-            rs = pstmt.executeQuery();
-            rs.next();
-
-            Protocol sndData = new Protocol(Protocol.TYPE0_LOGIN,Protocol.T0_CODE0_ID);
-            sndData.setBody(rs.getInt(1));
-            send(sndData);
+//            String[] s = (String[]) protocol.getBody();
+//            String SQL = "SELECT user_section FROM USERS WHERE user_id = ?";
+//            PreparedStatement pstmt = null;
+//            ResultSet rs = null;
+//
+//            pstmt = connection.prepareStatement(SQL);
+//            pstmt.setString(1, s[0]);
+//            rs = pstmt.executeQuery();
+//            rs.next();
+//
+//            Protocol sndData = new Protocol(Protocol.TYPE0_LOGIN,Protocol.T0_CODE0_ID);
+//            sndData.setBody(rs.getInt(1));
+//            send(sndData);
             break;
           case Protocol.TYPE1_LOGINOUT:
             break;
@@ -68,7 +80,8 @@ public class ServerThread extends Thread {
             //send(checkReq(protocol));
             break;
           case Protocol.TYPE7_VIEW_RES: // 조회 응답
-            //logoutReq(protocol);
+              handleViewAllScheduleNameRequest(protocol);
+              handleViewAllScheduleSRequest(protocol);
             break;
           case Protocol.TYPE8_UPDATE_REQ: // 조회 응답
                 //logoutReq(protocol);
@@ -90,6 +103,32 @@ public class ServerThread extends Thread {
         os.flush();
       }
 
+    // 프로토콜 수신
+    private Protocol recv(int type, int code) throws Exception {
+        byte[] header = new byte[Protocol.LEN_HEADER];
+        Protocol protocol = new Protocol();
+        try {
+            int receiveLength, readSize;
+            receiveLength = 0;
+            readSize = 0;
+            is.read(header, 0, Protocol.LEN_HEADER);
+            protocol.setPacketHeader(header);
+            byte[] buf = new byte[protocol.getBodyLength()];
+            while (receiveLength < protocol.getBodyLength()) {
+                readSize = is.read(buf, receiveLength, protocol.getBodyLength() - receiveLength);
+                if (readSize == -1) {
+                    throw new Exception("통신오류: 연결 끊어짐");
+                }
+                receiveLength += readSize;
+            }
+            protocol.setPacketBody(buf);
+            return protocol;
+        } catch (IOException e) {
+            throw new Exception("통신오류: 데이터 수신 실패함");
+        }
+    }
+
+
     public void close() throws IOException {
         if (clientSocket != null)
             clientSocket.close();
@@ -99,7 +138,7 @@ public class ServerThread extends Thread {
             os.close();
     }
 
-    public Protocol handleViewAllSchedulesRequest(Protocol protocol) {
+    public Protocol handleViewAllScheduleNameRequest(Protocol protocol) throws IOException {
         Protocol response;
         try {
             // 데이터베이스에서 일정 조회
@@ -111,12 +150,37 @@ public class ServerThread extends Thread {
             String[] scheduleArray = schedules.toArray(new String[0]);
 
             // 응답 본문 설정
-            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE0_SELECTION_SCHEDULE_LIST);
-            response.setBody(scheduleArray);
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE0_SELECTION_SCHEDULENAME_LIST);
+            response.setBody(scheduleArray, 5);
+            send(response);
         } catch (Exception e) {
             // 오류 처리
-            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE17_FAIL);
-            response.setBody("일정 조회 중 오류 발생: " + e.getMessage());
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE18_FAIL);
+            send(response);
+        }
+
+        return response;
+    }
+
+    public Protocol handleViewAllScheduleSRequest(Protocol protocol) throws IOException {
+        Protocol response;
+        try {
+            // 데이터베이스에서 일정 조회
+//            List<String> schedules = fetchAllSchedulesFromDB(); // DB에서 일정 목록 가져오기
+            //테스트용
+            List<String> schedules = fetchMockSchedules(); // DB에서 일정 목록 가져오기
+
+            // 문자열 배열로 변환
+            String[] scheduleArray = schedules.toArray(new String[0]);
+
+            // 응답 본문 설정
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST);
+            response.setBody(scheduleArray, 5);
+            send(response);
+        } catch (Exception e) {
+            // 오류 처리
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE18_FAIL);
+            send(response);
         }
 
         return response;
@@ -130,6 +194,22 @@ public class ServerThread extends Thread {
                 "Project Review at 2:00 PM",
                 "Weekly Sync-Up at 4:00 PM"
         );
+    }
+
+    public Protocol read() throws IOException {
+        byte[] header = new byte[Protocol.LEN_HEADER];
+        Protocol protocol = new Protocol();
+        int totalReceived = 0;
+        int readSize = 0;
+        is.read(header, 0, Protocol.LEN_HEADER);
+        protocol.setPacketHeader(header);
+        byte[] buf = new byte[protocol.getBodyLength()];
+        while (totalReceived < protocol.getBodyLength()) {
+            readSize = is.read(buf, totalReceived, protocol.getBodyLength() - totalReceived);
+            totalReceived += readSize;
+        }
+        protocol.setPacketBody(buf);
+        return protocol;
     }
 
 

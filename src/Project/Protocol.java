@@ -48,7 +48,7 @@ public class Protocol {
     // DELETE의 코드는 어떻게 해주어야 할까용...??
 
     // 선발일정 리스트
-    final static public int T6_CODE0_SELECTION_SCHEDULE_LIST = 0;
+    final static public int T6_CODE0_SELECTION_SCHEDULENAME_LIST = 0;
     // 생활관 사용료 리스트
     final static public int T6_CODE1_DORMITORY_FEE_LIST = 1;
     // 급식비 리스트
@@ -81,9 +81,12 @@ public class Protocol {
     final static public int T6_CODE15_TUBERCULOSIS_CERTIFICATE = 15;
     // 퇴사신청자 명단
     final static public int T6_CODE16_UNAPPLICATION_STUDENT = 16;
+    final static public int T6_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST = 17 ;
 
 
-    final static public int T7_CODE0_SELECTION_SCHEDULE_LIST = 0;
+
+
+    final static public int T7_CODE0_SELECTION_SCHEDULENAME_LIST = 0;
     final static public int T7_CODE1_DORMITORY_FEE_LIST = 1;
     final static public int T7_CODE2_MEAL_COST_LIST = 2;
     final static public int T7_CODE3_SELECTION_STATUS = 3;
@@ -100,7 +103,8 @@ public class Protocol {
     final static public int T7_CODE14_TUBERCULOSIS_CERTIFICATE_SUBMITTER = 14;
     final static public int T7_CODE15_TUBERCULOSIS_CERTIFICATE = 15;
     final static public int T7_CODE16_UNAPPLICATION_STUDENT = 16;
-    final static public int T7_CODE17_FAIL = 17;
+    final static public int T7_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST = 17;
+    final static public int T7_CODE18_FAIL = 18;
 
 
     final static public int T8_CODE0_ROOM_AND_BED_ASSIGNMENT = 0;
@@ -140,14 +144,14 @@ public class Protocol {
         this.bodyLength = input.length;
     }
 
-    public void setBody(String[] data) {
+    public void setBody(String[] data, int fixByteLength) {
         this.body = new byte[LEN_BODYLENGTH];
         byte[] input;
         int inputLength = 0;
         for(int i = 0 ; i < data.length ; i++){
             input = data[i].getBytes();
-            System.arraycopy(input, 0, this.body, inputLength, input.length);
-            inputLength += input.length;
+            System.arraycopy(input, 0, this.body, inputLength, fixByteLength);
+            inputLength += fixByteLength;
         }
         this.bodyLength = inputLength;
     }
@@ -191,6 +195,18 @@ public class Protocol {
 
     public byte[] getBody() {
         return this.body;
+    }
+
+    public String[] byteToStringArray(byte[] packet , int fixByteLength) {
+        int resultLength = packet.length / fixByteLength;
+        String[] result = new String[resultLength];
+        int j = 0;
+        for (int i = 0; i < packet.length; i += fixByteLength) {
+            int end = Math.min(i + fixByteLength, packet.length);
+            result[j] = new String(packet, i, end - i).trim();
+            j++;
+        }
+        return result;
     }
 
     private byte[] intToByte(int i) {
