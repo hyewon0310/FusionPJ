@@ -5,25 +5,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.sql.Connection;
+import java.util.Arrays;
 import java.util.List;
-//          case Protocol.TYPE0_LOGIN: //로그인
-////            String[] s = (String[]) protocol.getBody();
-////            String SQL = "SELECT user_section FROM USERS WHERE user_id = ?";
-////            PreparedStatement pstmt = null;
-////            ResultSet rs = null;
-////
-////            pstmt = connection.prepareStatement(SQL);
-////            pstmt.setString(1, s[0]);
-////            rs = pstmt.executeQuery();
-////            rs.next();
-////
-////            Protocol sndData = new Protocol(Protocol.TYPE0_LOGIN,Protocol.T0_CODE0_ID);
-////            sndData.setBody(rs.getInt(1));
-////            send(sndData);
-//            break;
+import java.util.Map;
 
-//// 데이터베이스 DAO 연결 필요
-//// 프로토콜 연결 필요
+import main.java.persistence.dao.*;
+import main.java.persistence.dto.DormitoryDTO;
+import main.java.persistence.dto.SelectionScheduleDTO;
+import main.java.persistence.dto.StudentDTO;
+
+
 //// 서버 스레드는 각 클라이언트의 요청을 처리하고 응답을 보내는 역할
 public class ServerThread extends Thread {
     private int portID;
@@ -32,11 +23,14 @@ public class ServerThread extends Thread {
     private Protocol protocol;
     private InputStream is;
     private OutputStream os;
+    //학생 정보 저장 => 로그인시 초기화
+    private String name;
+    private String StudentId;
 
-    public ServerThread(Socket paramSocket) throws IOException {
+    public ServerThread(Socket paramSocket, Connection paramConnection) throws IOException {
         System.out.println("[DEBUG] ServerThread 생성자 호출");
         portID = paramSocket.getPort();
-        // connection = paramConnection;
+        connection = paramConnection;
         this.clientSocket = paramSocket;
         this.is = paramSocket.getInputStream();
         this.os = paramSocket.getOutputStream();
@@ -49,7 +43,7 @@ public class ServerThread extends Thread {
         while (true) {
             try {
                 protocol = read();
-                handle(protocol);
+                handle(protocol,connection);
             } catch (Exception e) {
                 System.err.println("[ERROR] run()에서 예외 발생: " + e.getMessage());
                 e.printStackTrace();
@@ -59,8 +53,9 @@ public class ServerThread extends Thread {
         closeResources();
     }
 
+
     //입력들어온 함수와 비교하는...handle
-    public void handle(Protocol protocol) throws Exception {
+    public void handle(Protocol protocol,Connection conn) throws Exception {
         System.out.println("[DEBUG] handle() 호출: packetType=" + protocol.getType() + protocol.getCode());
         int packetType = protocol.getType();
 
@@ -78,11 +73,11 @@ public class ServerThread extends Thread {
                 System.out.println("[DEBUG] 등록 요청 처리 중...");
                 handleRegisterRequest(protocol);
                 break;
-            case Protocol.TYPE4_DELETE_REQ:
-                System.out.println("[DEBUG] 삭제 요청 처리 중...");
-                break;
+//            case Protocol.TYPE4_DELETE_REQ:
+//                System.out.println("[DEBUG] 삭제 요청 처리 중...");
+//                break;
             case Protocol.TYPE6_VIEW_REQ:
-                handleViewRequests(protocol);
+                handleViewRequests(protocol,conn);
                 break;
             case Protocol.TYPE8_UPDATE_REQ:
                 System.out.println("[DEBUG] 업데이트 요청 처리 중...");
@@ -161,6 +156,7 @@ public class ServerThread extends Thread {
                 System.out.println("[DEBUG] 알 수 없는 코드: " + protocol.getCode());
         }
     }
+
     //Type3
     private void handleRegisterResponse(Protocol protocol) throws IOException {
         switch (protocol.getCode()) {
@@ -176,63 +172,82 @@ public class ServerThread extends Thread {
     }
 
     // Type6
-    private void handleViewRequests(Protocol protocol) throws IOException {
+    private void handleViewRequests(Protocol protocol,Connection conn) throws IOException {
         switch (protocol.getCode()) {
             case Protocol.T6_CODE0_SELECTION_SCHEDULENAME_LIST:
                 System.out.println("[DEBUG] 처리 중: 선발 일정명 리스트 요청");
-                handleViewAllScheduleNameRequest(protocol);
+                handleViewAllScheduleNameRequest(protocol,conn);
                 break;
-            case Protocol.T6_CODE1_DORMITORY_FEE_LIST:
+            case Protocol.T6_CODE1_SELECTION_PERIOD_OF_SCHEDULE_LIST:
                 System.out.println("[DEBUG] 처리 중: 생활관 사용료 리스트 요청");
+                handleViewAllSchedulesRequest(protocol,conn);
                 break;
-            case Protocol.T6_CODE2_MEAL_COST_LIST:
+            case Protocol.T6_CODE2_DORMITORY_NAME_LIST:
                 System.out.println("[DEBUG] 처리 중: 급식비 리스트 요청");
                 break;
-            case Protocol.T6_CODE3_SELECTION_STATUS:
+            case Protocol.T6_CODE3_DORMITORY_TYPE_LIST:
                 System.out.println("[DEBUG] 처리 중: 선발 상태 요청");
                 break;
-            case Protocol.T6_CODE4_SELECTION_INFO:
+            case Protocol.T6_CODE4_DORMITORY_GENDER_LIST:
                 System.out.println("[DEBUG] 처리 중: 선발 정보 요청");
                 break;
-            case Protocol.T6_CODE5_DORMITORY_FEE:
+            case Protocol.T6_CODE5_DORMITORYFEE_LIST:
                 System.out.println("[DEBUG] 처리 중: 생활관 사용료 요청");
+                //handleStudentFeeRequest(protocol);
                 break;
-            case Protocol.T6_CODE6_MEAL_COST:
+            case Protocol.T6_CODE6_MEALTYPE_LIST:
                 System.out.println("[DEBUG] 처리 중: 급식비 요청");
                 break;
-            case Protocol.T6_CODE7_REFUND_STATUS:
+            case Protocol.T6_CODE7_MEALCOST_LIST:
                 System.out.println("[DEBUG] 처리 중: 환불 상태 요청");
                 break;
-            case Protocol.T6_CODE8_DORMITORY_ID:
+            case Protocol.T6_CODE8_SELECTION_STATUS:
                 System.out.println("[DEBUG] 처리 중: 생활관 ID 요청");
                 break;
-            case Protocol.T6_CODE9_APPLICATION_STUDENT_LIST:
+            case Protocol.T6_CODE9_SELECTION_INFO:
                 System.out.println("[DEBUG] 처리 중: 입사 신청 학생 리스트 요청");
                 break;
-            case Protocol.T6_CODE10_SETECTION_STUDENT_LIST:
+            case Protocol.T6_CODE10_DORMITORY_FEE:
                 System.out.println("[DEBUG] 처리 중: 선발 학생 리스트 요청");
                 break;
-            case Protocol.T6_CODE11_UNUSEDBED_LIST:
+            case Protocol.T6_CODE11_MEAL_COST:
                 System.out.println("[DEBUG] 처리 중: 남은 침대 리스트 요청");
                 break;
-            case Protocol.T6_CODE12_PAID_STUDENT:
+            case Protocol.T6_CODE12_REFUND_STATUS:
                 System.out.println("[DEBUG] 처리 중: 납부자 리스트 요청");
+               // handlePaidStudentsRequest(protocol);
                 break;
-            case Protocol.T6_CODE13_UNPAID_STUDENT:
-                System.out.println("[DEBUG] 처리 중: 미납자 리스트 요청");
+            case Protocol.T6_CODE13_DORMITORY_ID:
+                System.out.println("[DEBUG] 처리 중: 기숙사ID 조회 요청");
+                //viewDormitoryID(protocol);
                 break;
-            case Protocol.T6_CODE14_TUBERCULOSIS_CERTIFICATE_SUBMITTER:
+            case Protocol.T6_CODE14_APPLICATION_STUDENT_LIST:
                 System.out.println("[DEBUG] 처리 중: 결핵 진단서 제출자 리스트 요청");
                 break;
-            case Protocol.T6_CODE15_TUBERCULOSIS_CERTIFICATE:
+            case Protocol.T6_CODE15_SETECTION_STUDENT_LIST:
                 System.out.println("[DEBUG] 처리 중: 결핵 진단서 요청");
                 break;
-            case Protocol.T6_CODE16_UNAPPLICATION_STUDENT:
+            case Protocol.T6_CODE16_UNUSEDBED_LIST:
                 System.out.println("[DEBUG] 처리 중: 퇴사 신청자 리스트 요청");
                 break;
-            case Protocol.T6_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST:
+            case Protocol.T6_CODE17_PAID_STUDENT:
                 System.out.println("[DEBUG] 처리 중: 선발 일정 기간 리스트 요청");
-                handleViewAllSchedulesRequest(protocol);
+                break;
+            case Protocol.T6_CODE18_UNPAID_STUDENT:
+                System.out.println("[DEBUG] 처리 중: 선발 일정 기간 리스트 요청");
+                break;
+            case Protocol.T6_CODE19_TUBERCULOSIS_CERTIFICATE_SUBMITTER:
+                System.out.println("[DEBUG] 처리 중: 선발 일정 기간 리스트 요청");
+                break;
+            case Protocol.T6_CODE20_TUBERCULOSIS_CERTIFICATE:
+                System.out.println("[DEBUG] 처리 중: 선발 일정 기간 리스트 요청");
+                break;
+            case Protocol.T6_CODE21_UNAPPLICATION_STUDENT:
+                System.out.println("[DEBUG] 처리 중: 선발 일정 기간 리스트 요청");
+                break;
+            case Protocol.T6_CODE22_DORMITORYINFO:
+                System.out.println("[DEBUG] 처리 중: 기숙사 정보 조회 요청");
+                //viewDormitoryInfo(protocol);
                 break;
             default:
                 System.out.println("[DEBUG] 처리 중: 알 수 없는 코드");
@@ -245,58 +260,73 @@ public class ServerThread extends Thread {
             case Protocol.T7_CODE0_SELECTION_SCHEDULENAME_LIST:
                 System.out.println("[DEBUG] 조회 응답: 일정명 목록");
                 break;
-            case Protocol.T7_CODE1_DORMITORY_FEE_LIST:
+            case Protocol.T7_CODE1_SELECTION_PERIOD_OF_SCHEDULE_LIST:
                 System.out.println("[DEBUG] 조회 응답: 생활관 사용료 목록");
                 break;
-            case Protocol.T7_CODE2_MEAL_COST_LIST:
+            case Protocol.T7_CODE2_DORMITORY_NAME_LIST:
                 System.out.println("[DEBUG] 조회 응답: 급식비 목록");
                 break;
-            case Protocol.T7_CODE3_SELECTION_STATUS:
+            case Protocol.T7_CODE3_DORMITORY_TYPE_LIST:
                 System.out.println("[DEBUG] 조회 응답: 선발 상태");
                 break;
-            case Protocol.T7_CODE4_SELECTION_INFO:
+            case Protocol.T7_CODE4_DORMITORY_GENDER_LIST:
                 System.out.println("[DEBUG] 조회 응답: 선발 정보");
                 break;
-            case Protocol.T7_CODE5_DORMITORY_FEE:
+            case Protocol.T7_CODE5_DORMITORYFEE_LIST:
                 System.out.println("[DEBUG] 조회 응답: 생활관 사용료");
                 break;
-            case Protocol.T7_CODE6_MEAL_COST:
+            case Protocol.T7_CODE6_MEALTYPE_LIST:
                 System.out.println("[DEBUG] 조회 응답: 급식비");
                 break;
-            case Protocol.T7_CODE7_REFUND_STATUS:
+            case Protocol.T7_CODE7_MEALCOST_LIST:
                 System.out.println("[DEBUG] 조회 응답: 환불 상태");
                 break;
-            case Protocol.T7_CODE8_DORMITORY_ID:
+            case Protocol.T7_CODE8_SELECTION_STATUS:
                 System.out.println("[DEBUG] 조회 응답: 생활관 ID");
                 break;
-            case Protocol.T7_CODE9_APPLICATION_STUDENT_LIST:
+            case Protocol.T7_CODE9_SELECTION_INFO:
                 System.out.println("[DEBUG] 조회 응답: 입사 신청 학생 목록");
                 break;
-            case Protocol.T7_CODE10_SETECTION_STUDENT_LIST:
+            case Protocol.T7_CODE10_DORMITORY_FEE:
                 System.out.println("[DEBUG] 조회 응답: 선발 학생 목록");
                 break;
-            case Protocol.T7_CODE11_UNUSEDBED_LIST:
+            case Protocol.T7_CODE11_MEAL_COST:
                 System.out.println("[DEBUG] 조회 응답: 남은 침대 정보");
                 break;
-            case Protocol.T7_CODE12_PAID_STUDENT:
+            case Protocol.T7_CODE12_REFUND_STATUS:
                 System.out.println("[DEBUG] 조회 응답: 납부 학생 목록");
                 break;
-            case Protocol.T7_CODE13_UNPAID_STUDENT:
+            case Protocol.T7_CODE13_DORMITORY_ID:
                 System.out.println("[DEBUG] 조회 응답: 미납 학생 목록");
                 break;
-            case Protocol.T7_CODE14_TUBERCULOSIS_CERTIFICATE_SUBMITTER:
+            case Protocol.T7_CODE14_APPLICATION_STUDENT_LIST:
                 System.out.println("[DEBUG] 조회 응답: 결핵 진단서 제출자");
                 break;
-            case Protocol.T7_CODE15_TUBERCULOSIS_CERTIFICATE:
+            case Protocol.T7_CODE15_SETECTION_STUDENT_LIST:
                 System.out.println("[DEBUG] 조회 응답: 결핵 진단서");
                 break;
-            case Protocol.T7_CODE16_UNAPPLICATION_STUDENT:
+            case Protocol.T7_CODE16_UNUSEDBED_LIST:
                 System.out.println("[DEBUG] 조회 응답: 퇴사 신청자 명단");
                 break;
-            case Protocol.T7_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST:
+            case Protocol.T7_CODE17_PAID_STUDENT:
                 System.out.println("[DEBUG] 조회 응답: 일정 기간");
                 break;
-            case Protocol.T7_CODE18_FAIL:
+            case Protocol.T7_CODE18_UNPAID_STUDENT:
+                System.out.println("[DEBUG] 조회 응답: 실패");
+                break;
+            case Protocol.T7_CODE19_TUBERCULOSIS_CERTIFICATE_SUBMITTER:
+                System.out.println("[DEBUG] 조회 응답: 실패");
+                break;
+            case Protocol.T7_CODE20_TUBERCULOSIS_CERTIFICATE:
+                System.out.println("[DEBUG] 조회 응답: 실패");
+                break;
+            case Protocol.T7_CODE21_UNAPPLICATION_STUDENT:
+                System.out.println("[DEBUG] 조회 응답: 실패");
+                break;
+            case Protocol.T7_CODE22_DORMITORYINFO:
+                System.out.println("[DEBUG] 조회 응답: 실패");
+                break;
+            case Protocol.T7_CODE23_FAIL:
                 System.out.println("[DEBUG] 조회 응답: 실패");
                 break;
             default:
@@ -338,24 +368,23 @@ public class ServerThread extends Thread {
     }
 
 
-
     public int getPortID() {
         System.out.println("[DEBUG] getPortID() 호출");
         return portID;
     }
 
-    public void send(Protocol protocol) throws IOException {
-        System.out.println("[DEBUG] send() 호출: protocol=" + protocol);
-        try {
-            os.write(protocol.createPacket());
-            os.flush();
-            System.out.println("[DEBUG] 패킷 전송 성공");
-        } catch (IOException e) {
-            System.err.println("[ERROR] send()에서 예외 발생: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
-    }
+//    public void send(Protocol protocol) throws IOException {
+//        System.out.println("[DEBUG] send() 호출: protocol=" + protocol);
+//        try {
+//            os.write(protocol.createPacket());
+//            os.flush();
+//            System.out.println("[DEBUG] 패킷 전송 성공");
+//        } catch (IOException e) {
+//            System.err.println("[ERROR] send()에서 예외 발생: " + e.getMessage());
+//            e.printStackTrace();
+//            throw e;
+//        }
+//    }
 
     //기존 것 int readSize를 while문 밖에서 0으로 초기화하고 while문 안에서 할당해줬는데 합쳐짐
     private Protocol recv(int type, int code) throws Exception {
@@ -403,73 +432,253 @@ public class ServerThread extends Thread {
         }
     }
 
-    public Protocol handleViewAllScheduleNameRequest(Protocol protocol) throws IOException {
-
-
-    System.out.println("[DEBUG] handleViewAllScheduleNameRequest() 호출");
+    public Protocol handleViewAllScheduleNameRequest(Protocol protocol,Connection conn) throws IOException {
+        System.out.println("[DEBUG] handleViewAllScheduleNameRequest() 호출");
         Protocol response;
         try {
-            List<String> schedules = TempData.fetchMockSchedules();
-            String[] scheduleArray = schedules.toArray(new String[0]);
+            // 1. 데이터베이스에서 스케줄 가져오기
+            List<SelectionScheduleDTO> schedules = SelectionScheduleDAO.getAllSelectionScheduleName(conn);
+
+            String[] scheduleArray = schedules.stream()
+                    .map(SelectionScheduleDTO::getName)
+                    .toArray(String[]::new);
+
             response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE0_SELECTION_SCHEDULENAME_LIST);
-            response.setBody(scheduleArray, 3);
+            response.setBody(scheduleArray, 40);
+
             send(response);
             System.out.println("[DEBUG] 조회 이름 응답 전송 완료");
         } catch (Exception e) {
             System.err.println("[ERROR] handleViewAllScheduleNameRequest()에서 예외 발생: " + e.getMessage());
-            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE18_FAIL);
+            e.printStackTrace();
+
+            // 실패 응답
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE23_FAIL);
             send(response);
         }
         return response;
     }
 
-    public Protocol handleViewAllSchedulesRequest(Protocol protocol) throws IOException {
+
+    public Protocol handleViewAllSchedulesRequest(Protocol protocol,Connection conn) throws IOException {
         System.out.println("[DEBUG] handleViewAllSchedulesRequest() 호출");
         Protocol response;
+
         try {
-            List<String> schedules = TempData.fetchMockSchedules();
-            String[] scheduleArray = schedules.toArray(new String[0]);
-            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE17_SELECTION_PERIOD_OF_SCHEDULE_LIST);
-            response.setBody(scheduleArray, 3);
+            List<SelectionScheduleDTO> schedules = SelectionScheduleDAO.getAllSelectionSchedules(conn);
+
+            if (schedules.isEmpty()) {
+                throw new IllegalStateException("스케줄 데이터가 존재하지 않습니다.");
+            }
+
+            String[] schedulePeriods = schedules.stream()
+                    .map(schedule -> schedule.getPeriod() != null
+                            ? schedule.getPeriod().toString()
+                            : "미정")
+                    .toArray(String[]::new);
+
+            // 3. Protocol 응답 생성 및 바디 설정
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE1_SELECTION_PERIOD_OF_SCHEDULE_LIST);
+            response.setBody(schedulePeriods, 10);
+
+            // 4. 응답 전송
             send(response);
-            System.out.println("[EBUG] 조회 기간 응답 전송 완료");
+            System.out.println("[DEBUG] 조회 기간 응답 전송 완료");
         } catch (Exception e) {
             System.err.println("[ERROR] handleViewAllSchedulesRequest()에서 예외 발생: " + e.getMessage());
-            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE18_FAIL);
+            e.printStackTrace();
+
+            // 실패 응답
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE23_FAIL);
+            send(response);
+        }
+
+        return response;
+    }
+
+    public Protocol handleView(Protocol protocol,Connection conn) throws IOException {
+        System.out.println("[DEBUG] handleViewAllScheduleNameRequest() 호출");
+        Protocol response;
+        try {
+            // 1. 데이터베이스에서 스케줄 가져오기
+            List<SelectionScheduleDTO> schedules = SelectionScheduleDAO.getAllSelectionScheduleName(conn);
+
+            String[] scheduleArray = schedules.stream()
+                    .map(SelectionScheduleDTO::getName)
+                    .toArray(String[]::new);
+
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE0_SELECTION_SCHEDULENAME_LIST);
+            response.setBody(scheduleArray, 40);
+
+            send(response);
+            System.out.println("[DEBUG] 조회 이름 응답 전송 완료");
+        } catch (Exception e) {
+            System.err.println("[ERROR] handleViewAllScheduleNameRequest()에서 예외 발생: " + e.getMessage());
+            e.printStackTrace();
+
+            // 실패 응답
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE23_FAIL);
             send(response);
         }
         return response;
+    }
+
+
+
+//    public Protocol read() throws IOException {
+//        System.out.println("[DEBUG] read() 호출");
+//        byte[] header = new byte[Protocol.LEN_HEADER];
+//        Protocol protocol = new Protocol();
+//        System.out.println("문제가 없음");
+//        int bytesRead = is.read(header, 0, Protocol.LEN_HEADER);
+//        System.out.println("[DEBUG] 헤더 읽기 완료: bytesRead=" + bytesRead);
+//
+//        if (bytesRead < Protocol.LEN_HEADER) {
+//            throw new IOException("헤더 데이터가 충분하지 않습니다.");
+//        }
+//
+//        protocol.setPacketHeader(header);
+//        System.out.println("[DEBUG] 헤더 설정 완료: bodyLength=" + protocol.getBodyLength());
+//
+//        byte[] buf = new byte[protocol.getBodyLength()];
+//        int totalReceived = 0;
+//        while (totalReceived < protocol.getBodyLength()) {
+//            int readSize = is.read(buf, totalReceived, protocol.getBodyLength() - totalReceived);
+//            if (readSize == -1) {
+//                throw new IOException("통신 오류: 데이터가 중단되었습니다.");
+//            }
+//            totalReceived += readSize;
+//            System.out.println("[DEBUG] 본문 읽기 진행 중: totalReceived=" + totalReceived);
+//        }
+//
+//        if (bytesRead > Protocol.LEN_HEADER) protocol.setPacketBody(buf);
+//        System.out.println("[DEBUG] 바디 읽기 완료");
+//        return protocol;
+//    }
+
+    public void send(Protocol protocol) throws IOException {
+        System.out.println("[DEBUG] send() 호출: protocol=" + protocol);
+        try {
+            byte[] packet = protocol.createPacket();
+            os.write(packet);
+            os.flush();
+            System.out.println("[DEBUG] 패킷 전송 성공, 데이터: " + Arrays.toString(packet));
+        } catch (IOException e) {
+            System.err.println("[ERROR] send()에서 예외 발생: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public Protocol read() throws IOException {
         System.out.println("[DEBUG] read() 호출");
         byte[] header = new byte[Protocol.LEN_HEADER];
-        Protocol protocol = new Protocol();
-        System.out.println("문제가 없음");
-        int bytesRead = is.read(header, 0, Protocol.LEN_HEADER);
-        System.out.println("[DEBUG] 헤더 읽기 완료: bytesRead=" + bytesRead);
-
+        int bytesRead = is.read(header);
         if (bytesRead < Protocol.LEN_HEADER) {
             throw new IOException("헤더 데이터가 충분하지 않습니다.");
         }
-
+        Protocol protocol = new Protocol();
         protocol.setPacketHeader(header);
-        System.out.println("[DEBUG] 헤더 설정 완료: bodyLength=" + protocol.getBodyLength());
-
-        byte[] buf = new byte[protocol.getBodyLength()];
+        byte[] body = new byte[protocol.getBodyLength()];
         int totalReceived = 0;
         while (totalReceived < protocol.getBodyLength()) {
-            int readSize = is.read(buf, totalReceived, protocol.getBodyLength() - totalReceived);
-            if (readSize == -1) {
-                throw new IOException("통신 오류: 데이터가 중단되었습니다.");
-            }
+            int readSize = is.read(body, totalReceived, protocol.getBodyLength() - totalReceived);
+            if (readSize == -1) throw new IOException("통신 오류: 데이터가 중단되었습니다.");
             totalReceived += readSize;
-            System.out.println("[DEBUG] 본문 읽기 진행 중: totalReceived=" + totalReceived);
         }
-
-        if (bytesRead > Protocol.LEN_HEADER) protocol.setPacketBody(buf);
-        System.out.println("[DEBUG] 바디 읽기 완료");
+        protocol.setPacketBody(body);
+        System.out.println("[DEBUG] 읽기 완료: " + Arrays.toString(body));
         return protocol;
     }
+
+    ///기능 4번 테스트를 위한 공간
+    // 특정 학생의 생활관 비용 조회
+//    private void handleStudentFeeRequest(Protocol protocol) throws IOException {
+//        System.out.println("[DEBUG] handleStudentFeeRequest 호출");
+//        try {
+//            String studentId = new String(protocol.getBody());
+//            System.out.println("[DEBUG] 요청받은 학생 ID: " + studentId);
+//
+//            Map<String, Object> student = TempData.findStudentById(studentId);
+//
+//            Protocol response;
+//            if (student != null) {
+//                String message = "학생 이름: " + student.get("이름") + ", 납부 상태: " + student.get("납부여부");
+//                response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE5_DORMITORY_FEE);
+//                response.setBody(message);
+//            } else {
+//                response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE18_FAIL);
+//            }
+//            send(response);
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] handleStudentFeeRequest 예외 발생: " + e.getMessage());
+//        }
+//    }
+//
+//    private void handlePaidStudentsRequest(Protocol protocol) throws IOException {
+//        System.out.println("[DEBUG] handlePaidStudentsRequest 호출");
+//        try {
+//            int dormitoryId = Integer.parseInt(new String(protocol.getBody()));
+//            List<Map<String, Object>> paidStudents = TempData.findPaidStudentsByDormitory(dormitoryId);
+//
+//            String[] names = paidStudents.stream()
+//                    .map(student -> student.get("이름").toString())
+//                    .toArray(String[]::new);
+//
+//            Protocol response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE12_PAID_STUDENT);
+//            response.setBody(names, 50);
+//            send(response);
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] handlePaidStudentsRequest 예외 발생: " + e.getMessage());
+//        }
+//    }
+//
+//    private void handleUnpaidStudentsRequest(Protocol protocol) throws IOException {
+//        System.out.println("[DEBUG] handleUnpaidStudentsRequest 호출");
+//        try {
+//            int dormitoryId = Integer.parseInt(new String(protocol.getBody()));
+//            List<Map<String, Object>> unpaidStudents = TempData.findUnpaidStudentsByDormitory(dormitoryId);
+//
+//            String[] names = unpaidStudents.stream()
+//                    .map(student -> student.get("이름").toString())
+//                    .toArray(String[]::new);
+//
+//            Protocol response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE13_UNPAID_STUDENT);
+//            response.setBody(names, 50);
+//            send(response);
+//        } catch (Exception e) {
+//            System.err.println("[ERROR] handleUnpaidStudentsRequest 예외 발생: " + e.getMessage());
+//        }
+//    }
+   /*
+   * public void viewDormitoryID(Protocol protocol) throws Exception {
+        Protocol response;
+        try
+        {
+            System.out.println("서버에서 읽어지는 지 확인");
+            String[] dormitoryInfo = protocol.dataExtraction(protocol.getBody(), 3);
+//            String dormitoryName = dormitoryInfo[0];
+            String dormitoryType = dormitoryInfo[1];
+            String gender = dormitoryInfo[2];
+
+            String dormitoryName = dormitoryInfo[0];
+//            int dormitoryType = Integer.parseInt(dormitoryInfo[1]);
+//            int gender = Integer.parseInt(dormitoryInfo[2]);
+
+            // DB 서버에서 로그인 한 학생의 gender (성별)을 읽어 반환하는 코드 필요
+
+            String dormitoryID = dao.findDormitoryId(dormitoryName, dormitoryType, gender);
+            if (Integer.parseInt(dormitoryID) > 0) response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE13_DORMITORY_ID);
+            else response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE23_FAIL);
+            response.setBody(dormitoryID);
+            send(response);
+
+            System.out.println("[System] 생활관ID 조회 응답 전송 완료");
+        } catch (Exception e) {
+            System.err.println("[ERROR] viewMealTypeList()에서 예외 발생" + e.getMessage());
+            response = new Protocol(Protocol.TYPE7_VIEW_RES, Protocol.T7_CODE23_FAIL);
+            send(response);
+        }
+    }*/
 
 }

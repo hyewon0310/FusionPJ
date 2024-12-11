@@ -1,5 +1,6 @@
 package Project;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -7,14 +8,20 @@ import java.net.*;
 import java.sql.*;
 import java.util.ArrayList;
 
+import main.java.persistence.PooledDataSource;
+//import main.java.persistence.dto.*;
+
+
 public class Server {
     // 서버 : 클라이언트 관계 = 1 : 1 관계
     private static ServerSocket serverSocket;  // 대기 소켓
     // 다중 처리 기술
     private static ServerThread[] clients;
+    private Connection conn;
     private static int clientCount;
     private InputStream is;
     private OutputStream os;
+    private DataSource ds = PooledDataSource.getDataSource();
 
     public static void main(String[] args) throws Exception {
         Server server = new Server();
@@ -35,16 +42,19 @@ public class Server {
             // 클라이언트 접속 대기 및 통신 담당 소켓 담당
             Socket commSocekt = serverSocket.accept();  // 통신 소켓
             //DB 연결 추가하기
-
-//            addThread(commSocekt, conn);
-            addThread(commSocekt);
+            String DB_URL = "jdbc:mysql://172.30.96.252:3306/mydb?characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+            String DB_USER = "root";
+            String DB_PASSWORD = "kwom@9604844";
+            conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            addThread(commSocekt, conn);
+            //addThread(commSocekt);
         }
     }
 
       // 쓰레드 동기화
-    public synchronized void addThread(Socket socket) throws Exception {
+    public synchronized void addThread(Socket socket,Connection conn) throws Exception {
         if (clientCount < clients.length) {
-            clients[clientCount] = new ServerThread(socket);
+            clients[clientCount] = new ServerThread(socket,conn);
             clients[clientCount].start();
             clientCount++;
         } else {
@@ -63,7 +73,7 @@ public class Server {
             // System.out.print("Current Using Client Number : ");
             // System.out.print(clientCount);
             toTerminate.close();
-            toTerminate.stop();
+           // toTerminate.stop();
         }
     }
 
